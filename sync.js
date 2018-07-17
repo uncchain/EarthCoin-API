@@ -170,20 +170,24 @@ function sortHeaders(headers) {
   headCache = {};         // clear the chache ?
   var invs = [];          // used in p2p request for data
   bc = 0;                 // clear the full block counter
+  var fork = false;
   headers.forEach( function(header) {
     var prevHash = convHash(header.prevHash);
     if (prevHash === bestHash) {
       bestHash = header.hash;
       bestIndex++;
       headCache[prevHash] = { _id: bestHash, i: bestIndex };
-      var copybuf = new Buffer(bestHash, 'hex').reverse();
+      var copybuf = Buffer.from(bestHash, 'hex').reverse();
       invs.push( {type: 2, hash: copybuf} );
     }
     else {
-      return treatFork();
+      fork = true;
     }
   });
-  askBlocks(invs);
+  if (!fork)
+    askBlocks(invs);
+  else
+    treatFork();
 }
 //////////////////////////////////////////////////////////////
 
@@ -222,18 +226,28 @@ function treatFork() {
 //////////////////////////////////////////////////////////////
 // Add the block data to the cache.
 //
-function sortBlocks(block) {
-  var header = block.header;
-  var hash = header.hash;
-  var prevHash = convHash(header.prevHash);
-  var rawBlock = block.toBuffer();
-  if (headCache[prevHash]._id === hash) {
-    headCache[prevHash].d = rawBlock;
-    bc++;
+function verifyBlocks() {
+  console.log('verify');
+  var dbCache = Object.values(headCache);
+  console.log('...');
+  var cl = dbCache.length;
+  var itisOK = (cl === hc);
+  var fork = false;
+  dbCache.forEach( function (dbRec) {
+    itisOK = itisOK && dbRec.hasOwnProperty('_id') && dbRec.hasOwnProperty('i') && dbRec.hasOwnProperty('d');
+    if (itisOK)
+      decodeTransactions(dbRec);
+    else
+      fork  = true;
+  });
+  if (!fork) {
+    dbwriteBlocks(dbCache);
   }
-  if (bc === hc)
-    verifyBlocks();
-}
+  else {
+    console.log('fork detected');
+    treatFork();          // something failed ?
+  } 
+} 
 //////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////
