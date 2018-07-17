@@ -226,28 +226,18 @@ function treatFork() {
 //////////////////////////////////////////////////////////////
 // Add the block data to the cache.
 //
-function verifyBlocks() {
-  console.log('verify');
-  var dbCache = Object.values(headCache);
-  console.log('...');
-  var cl = dbCache.length;
-  var itisOK = (cl === hc);
-  var fork = false;
-  dbCache.forEach( function (dbRec) {
-    itisOK = itisOK && dbRec.hasOwnProperty('_id') && dbRec.hasOwnProperty('i') && dbRec.hasOwnProperty('d');
-    if (itisOK)
-      decodeTransactions(dbRec);
-    else
-      fork  = true;
-  });
-  if (!fork) {
-    dbwriteBlocks(dbCache);
+function sortBlocks(block) {
+  var header = block.header;
+  var hash = header.hash;
+  var prevHash = convHash(header.prevHash);
+  var rawBlock = block.toBuffer();
+  if (headCache[prevHash]._id === hash) {
+    headCache[prevHash].d = rawBlock;
+    bc++;
   }
-  else {
-    console.log('fork detected');
-    treatFork();          // something failed ?
-  } 
-} 
+  if (bc === hc)
+    verifyBlocks();
+}
 //////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////
@@ -273,15 +263,22 @@ function verifyBlocks() {
   console.log('...');
   var cl = dbCache.length;
   var itisOK = (cl === hc);
+  var fork = false;
   dbCache.forEach( function (dbRec) {
     itisOK = itisOK && dbRec.hasOwnProperty('_id') && dbRec.hasOwnProperty('i') && dbRec.hasOwnProperty('d');
     if (itisOK)
       decodeTransactions(dbRec);
     else
-      return treatFork();          // something failed ?
+      fork  = true;
   });
-  console.log('OK');
-  dbwriteBlocks(dbCache);
+  if (!fork) {
+
+    dbwriteBlocks(dbCache);
+  }
+  else {
+    console.log('fork detected');
+    treatFork();          // something failed ?
+  }
 }
 //////////////////////////////////////////////////////////////
 
