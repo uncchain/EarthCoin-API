@@ -15,6 +15,16 @@ nodejs sync.js &
 nodejs api.js &
 ```
 
+## Auto-start after reboot
+An option using cron -> run the command
+```
+crontab -e
+```
+Then add a line at the end of the file 
+```
+@reboot ~/EarthCoin-API/start.sh
+```
+
 ## Upgrade from an older pre-release version
 If an erlier version of this code was run on your machine, the old database data have to be deleted manually by commands:
 ```
